@@ -3,7 +3,6 @@ import requests
 import json
 import re
 import os
-
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict
 from openai import OpenAI
@@ -12,6 +11,27 @@ from . import reddit_config
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import fuzz
+
+
+# 🔁 Optional caching for NLP and embedding model
+_embedding_model = None
+_nlp = None
+
+def get_embedding_model():
+    """Loads the sentence-transformers model only once."""
+    global _embedding_model
+    if _embedding_model is None:
+        from sentence_transformers import SentenceTransformer
+        _embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+    return _embedding_model
+
+def get_nlp_model():
+    """Loads the spaCy model only once."""
+    global _nlp
+    if _nlp is None:
+        import spacy
+        _nlp = spacy.load("en_core_web_sm")
+    return _nlp
 
 
 def normalize_entity_name(name: str) -> str:
@@ -91,8 +111,7 @@ def extract_phrases(query: str):
 
 def filter_relevant_posts(posts: list, query: str):
     """Filter posts based on noun overlap and meaningful phrase matches."""
-    import spacy
-    nlp = spacy.load("en_core_web_sm") 
+    nlp = get_nlp_model()
     doc = nlp(query)
     query_nouns = {tok.lemma_.lower() for tok in doc if tok.pos_ in ("NOUN", "PROPN")}
     query_phrases = extract_phrases(query)  # ['plant shops', 'in dfw', ...]
@@ -115,11 +134,7 @@ def filter_relevant_posts(posts: list, query: str):
 
 
 def rerank_posts(posts: list, query: str, top_k: int = 10):
-    from sentence_transformers import SentenceTransformer  # ✅ load only when needed
-    
-
-    model = SentenceTransformer("all-MiniLM-L6-v2", device='cpu')
-
+    model = get_embedding_model()
     print(f"\n🔍 Query: {query}")
     query_emb = model.encode([query])[0]
 
