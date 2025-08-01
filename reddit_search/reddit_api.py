@@ -62,12 +62,22 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 
+# # PRAW Reddit client
+# reddit = praw.Reddit(
+#     client_id=reddit_config.REDDIT_CLIENT_ID,
+#     client_secret=reddit_config.REDDIT_CLIENT_SECRET,
+#     user_agent=reddit_config.REDDIT_USER_AGENT
+# )
+
+
+
 # PRAW Reddit client
 reddit = praw.Reddit(
-    client_id=reddit_config.REDDIT_CLIENT_ID,
-    client_secret=reddit_config.REDDIT_CLIENT_SECRET,
-    user_agent=reddit_config.REDDIT_USER_AGENT
+    client_id=os.environ["REDDIT_CLIENT_ID"],
+    client_secret=os.environ["REDDIT_CLIENT_SECRET"],
+    user_agent=os.environ["REDDIT_USER_AGENT"]
 )
+
 
 # Embedding model for reranking
 #embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
