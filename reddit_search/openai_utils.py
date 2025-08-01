@@ -7,6 +7,8 @@ load_dotenv()
 #print("Loaded OPENAI_API_KEY:", os.getenv("OPENAI_API_KEY"))
 
 api_key = os.getenv("OPENAI_API_KEY")
+print("✅ DEBUG: OPENAI_API_KEY =", os.getenv("OPENAI_API_KEY"))
+
 
 if not api_key:
     raise ValueError("OPENAI_API_KEY not found. Check .env file for environment")
