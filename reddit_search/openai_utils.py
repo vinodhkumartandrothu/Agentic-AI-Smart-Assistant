@@ -9,7 +9,7 @@ load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 
 if not api_key:
-    raise ValueError("OpenAI_API_KEYnot found. Check .env file for environment")
+    raise ValueError("OPENAI_API_KEYnot found. Check .env file for environment")
 
 
 
@@ -28,7 +28,7 @@ def ask_openai(prompt, model="gpt-4o"):  # Use gpt-4o or gpt-3.5-turbo if you do
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        return f"OpenAI Error: {e}"
+        return f"OPENAI Error: {e}"
     
 
 
