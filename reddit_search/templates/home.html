@@ -1,0 +1,780 @@
+
+<html>
+    <head>
+        <title>Smart Reddit Assistant</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: #f8f9fa;
+                padding-top: 60px;
+            }
+            h1 {
+                font-weight: 600;
+            }
+        </style>
+    </head>
+
+
+<body>
+    <div class="container">
+        <!-- <h1 class = "text-center mb-4 text-primary">Smart Reddit Assistant</h1> -->
+         <h1 class="text-center mb-4" style="color: #FF4500;">Smart Reddit Assistant</h1>
+
+        <form id="chat-form" class="d-flex justify-content-center mb-4">
+            <input type="text" id="query" class="form-control w-50 me-2" placeholder="Ask me anything..." required>
+            <button type="submit" class = "btn btn-primary">Submit</button>
+        </form>
+
+        <div id ="loading-spinner" class="text-center my-4" style="display: none;">
+            <div class="spinner-border text-primary" role = "status">
+                <span class="visually-hidden"> Loading ... </span>
+            </div>
+            <p class="mt-2">Fetching insights from Reddit...</p>
+        </div> 
+
+        <pre id="output" class="p-3 bg-light rounded"></pre>
+
+        <div id="entities-section" class="mt-4" style="display: none;">
+            <h3>Most Recommended by Reddit Users:</h3>
+            <ul id="entities-list" class="list-group"></ul>
+        </div>
+
+        <div id="posts-section" class="mt-4" style="display: none;">
+            <h3>Relevant Reddit Posts:</h3>
+            <ul id="posts-list" class="list-group"></ul>
+        </div>
+
+       <script>
+            const form = document.getElementById("chat-form");
+            const queryInput = document.getElementById("query");
+            const outputBox = document.getElementById("output");
+            const spinner = document.getElementById("loading-spinner");
+
+            const entitiesList = document.getElementById("entities-list");
+            const entitiesSection = document.getElementById("entities-section");
+
+            const postsList = document.getElementById("posts-list");
+            const postsSection = document.getElementById("posts-section");
+
+            form.addEventListener("submit", async function (e) {
+                e.preventDefault();
+
+                const query = queryInput.value;
+                const model = "gpt";
+
+                spinner.style.display = "block";
+                // outputBox.textContent = "Loading...\n";
+                entitiesList.innerHTML = "";
+                postsList.innerHTML = "";
+                entitiesSection.style.display = "none";
+                postsSection.style.display = "none";
+
+                try {
+                    const response = await fetch(`/reddit-agentic-data/?query=${encodeURIComponent(query)}&model=${model}`);
+                    const data = await response.json();
+
+                    // outputBox.textContent = data.answer || "Here's what I found:";
+                    if (data.answer) {
+                            outputBox.textContent = data.answer;
+                        } else if (
+                            (data.entities && data.entities.length > 0) ||
+                            (data.top_posts && data.top_posts.length > 0) ||
+                            (data.reddit_posts && data.reddit_posts.length > 0)
+                        ) {
+                            outputBox.textContent = "Here's what I found:";
+                        } else {
+                            outputBox.textContent = "";  // show nothing if nothing useful
+                        }
+
+
+                    if (data.entities && data.entities.length > 0) {
+                        entitiesSection.style.display = "block";
+
+                        data.entities.forEach(entity => {
+                            const li = document.createElement("li");
+                            const card = document.createElement("div");
+                            card.className = "card mb-3";
+
+                            const cardBody = document.createElement("div");
+                            cardBody.className = "card-body";
+
+                            const title = document.createElement("h5");
+                            title.className = "card-title";
+                            title.textContent = `${entity.name} – ${entity.mentions} mentions`;
+
+                            cardBody.appendChild(title);
+
+                            if (entity.comments && entity.comments.length > 0) {
+                                    const commentWrapper = document.createElement("div");
+                                    commentWrapper.className = "mt-3";
+
+                                    const collapseDiv = document.createElement("div");
+                                    collapseDiv.className = "mt-2";
+
+                                    entity.comments.slice(0, 3).forEach((comment, index) => {
+                                        const commentDiv = document.createElement("div");
+                                        commentDiv.className = "p-3 bg-light border rounded mb-2";
+
+                                        // Fade the first comment so users sense there's more
+                                        if (index === 0) {
+                                            commentDiv.classList.add("text-muted");
+                                        } else {
+                                            commentDiv.style.display = "none";  // hide 2nd and 3rd
+                                        }
+
+                                        const commentText = document.createElement("p");
+                                        commentText.textContent = comment.text;
+
+                                        const commentLink = document.createElement("a");
+                                        commentLink.href = comment.url;
+                                        commentLink.target = "_blank";
+                                        commentLink.textContent = "🔗 View on Reddit";
+
+                                        commentDiv.appendChild(commentText);
+                                        commentDiv.appendChild(commentLink);
+                                        commentDiv.dataset.index = index;
+                                        collapseDiv.appendChild(commentDiv);
+                                    });
+
+                                    // Toggle link to expand/collapse
+                                    const toggleBtn = document.createElement("button");
+                                    toggleBtn.className = "btn btn-sm btn-outline-secondary mt-2";
+                                    toggleBtn.textContent = "See more comments";
+
+                                    toggleBtn.onclick = function () {
+                                        const hiddenComments = collapseDiv.querySelectorAll('div[data-index]');
+                                        hiddenComments.forEach(div => {
+                                            if (div.dataset.index === "0") return;
+                                            div.style.display = div.style.display === "none" ? "block" : "none";
+                                        });
+
+                                        toggleBtn.textContent =
+                                            toggleBtn.textContent === "See more comments"
+                                                ? "Hide comments"
+                                                : "See more comments";
+                                    };
+
+                                    commentWrapper.appendChild(collapseDiv);
+                                    commentWrapper.appendChild(toggleBtn);
+                                    cardBody.appendChild(commentWrapper);
+                                }
+
+                            card.appendChild(cardBody);
+                            li.appendChild(card);
+                            entitiesList.appendChild(li);
+                        });
+                    } else {
+                        outputBox.textContent += "\n⚠️ No entities extracted by model.";
+                    }
+
+                    const posts = data.top_posts || data.reddit_posts || [];
+                    if (posts.length > 0) {
+                        postsSection.style.display = "block";
+
+                        posts.forEach(post => {
+                            const li = document.createElement("li");
+                            li.className = "list-group-item";
+                            li.innerHTML = `<a href="${post.url}" target="_blank">${post.title}</a><br>Score: ${post.score} | Comments: ${post.comments_count}`;
+                            postsList.appendChild(li);
+                        });
+                    } else {
+                        outputBox.textContent += "\n⚠️ No Reddit posts found after reranking.";
+                    }
+
+                } catch (error) {
+                    outputBox.textContent += "\n❌ Something went wrong while fetching data.";
+                    console.error("JS Error:", error);
+                } finally {
+                    spinner.style.display = "none";
+                }
+            });
+        </script>
+
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>Reddit GPT Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+            padding-top:60px;
+
+        }
+        h1{
+            font-weight:600;
+        }
+        
+        /* body { font-family: Arial; padding: 20px; }
+        input[type="text"], button { padding: 10px; font-size: 16px; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 6px; white-space: pre-wrap; }
+        .section { margin-top: 20px; } */
+    </style>
+</head>
+<body>
+
+    <h1>Reddit GPT Assistant</h1>
+
+    <form id="chat-form">
+        <input type="text" id="query" placeholder="Ask me anything..." required>
+        <button type="submit">Submit</button>
+    </form>
+
+    <pre id="output">Waiting for your query...</pre>
+
+    <div id="entities-section" class="section" style="display: none;">
+        <h3>Most Recommended Entities from Reddit Comments:</h3>
+        <ul id="entities-list"></ul>
+    </div>
+
+    <div id="posts-section" class="section" style="display: none;">
+        <h3>Relevant Reddit Posts:</h3>
+        <ul id="posts-list"></ul>
+    </div>
+
+    <script>
+        const form = document.getElementById("chat-form");
+        const output = document.getElementById("output");
+        const entitiesList = document.getElementById("entities-list");
+        const postsList = document.getElementById("posts-list");
+        const entitiesSection = document.getElementById("entities-section");
+        const postsSection = document.getElementById("posts-section");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const query = document.getElementById("query").value;
+            const model = "gpt";  // 👈 Removed dropdown, forced to GPT
+
+            output.textContent = "Loading...\n";
+            entitiesSection.style.display = "none";
+            postsSection.style.display = "none";
+            entitiesList.innerHTML = "";
+            postsList.innerHTML = "";
+
+            // ✅ Step 1: Stream GPT answer
+            // const response = await fetch(`/reddit-assistant-stream/?query=${encodeURIComponent(query)}&model=${model}`);
+            // const reader = response.body.getReader();
+            // const decoder = new TextDecoder();
+
+            // while (true) {
+            //     const { value, done } = await reader.read();
+            //     if (done) break;
+            //     const chunk = decoder.decode(value, { stream: true });
+            //     output.textContent += chunk;
+            // }
+
+            // output.textContent += "\n\nPlease wait, pulling up real-time Reddit recommendations...\n";
+
+            // ✅ Step 2: Get entities + posts
+            const extraResponse = await fetch(`/reddit-agentic-data/?query=${encodeURIComponent(query)}&model=${model}`);
+            const jsonData = await extraResponse.json();
+
+            const entities = jsonData.entities || jsonData.recommended_entities || [];
+            const posts = jsonData.top_posts || jsonData.reddit_posts || [];
+
+            if (entities.length > 0) {
+                entitiesSection.style.display = "block";
+
+                entities.forEach(entity => {
+                    const li = document.createElement("li");
+                    const entityTitle = document.createElement("strong");
+                    entityTitle.textContent = `${entity.name} - ${entity.mentions} mentions`;
+                    li.appendChild(entityTitle);
+
+                    if (entity.comments && entity.comments.length > 0) {
+                        const commentBox = document.createElement("div");
+                        commentBox.style.border = "1px solid #ccc";
+                        commentBox.style.padding = "10px";
+                        commentBox.style.marginTop = "10px";
+                        commentBox.style.borderRadius = "8px";
+                        commentBox.style.background = "#f9f9f9";
+
+                        entity.comments.forEach(comment => {
+                            const commentText = document.createElement("p");
+                            commentText.textContent = comment.text;
+
+                            const commentLink = document.createElement("a");
+                            commentLink.href = comment.url;
+                            commentLink.target = "_blank";
+                            commentLink.textContent = "🔗 View on Reddit";
+
+                            commentBox.appendChild(commentText);
+                            commentBox.appendChild(commentLink);
+                            commentBox.appendChild(document.createElement("hr"));
+                        });
+
+                        li.appendChild(commentBox);
+                    }
+
+                    entitiesList.appendChild(li);
+                });
+            } else {
+                output.textContent += "\n⚠️ No entities extracted by model.\n";
+            }
+
+            if (posts.length > 0) {
+                postsSection.style.display = "block";
+
+                posts.forEach(post => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `<a href="${post.url}" target="_blank">${post.title}</a><br>Score: ${post.score} | Comments: ${post.comments_count}`;
+                    postsList.appendChild(li);
+                });
+            } else {
+                output.textContent += "\n⚠️ No Reddit posts found after reranking.\n";
+            }
+        });
+    </script>
+</body>
+</html> -->
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>Reddit GPT Assistant</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input[type="text"], button { padding: 10px; font-size: 16px; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 6px; white-space: pre-wrap; }
+        .section { margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <h1>Reddit GPT Assistant</h1>
+
+    <form id="chat-form">
+        <input type="text" id="query" placeholder="Ask me anything..." required>
+        <select id="model">
+            <option value="hermes">Hermes</option>
+            <option value="gpt">GPT-4</option>
+            <option value="deepseek-r1">Deepseek-R1</option>
+            <option value="kimi-k2">Kimi K2</option>
+        </select>
+        <button type="submit">Submit</button>
+    </form>
+
+    <pre id="output">Waiting for your query...</pre>
+
+    <div id="entities-section" class="section" style="display: none;">
+        <h3>Most Recommended Entities from Reddit Comments:</h3>
+        <ul id="entities-list"></ul>
+    </div>
+
+    <div id="posts-section" class="section" style="display: none;">
+        <h3>Relevant Reddit Posts:</h3>
+        <ul id="posts-list"></ul>
+    </div>
+
+    <script>
+        const form = document.getElementById("chat-form");
+        const output = document.getElementById("output");
+        const entitiesList = document.getElementById("entities-list");
+        const postsList = document.getElementById("posts-list");
+        const entitiesSection = document.getElementById("entities-section");
+        const postsSection = document.getElementById("posts-section");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const query = document.getElementById("query").value;
+            output.textContent = "Loading...\n";
+            entitiesSection.style.display = "none";
+            postsSection.style.display = "none";
+            entitiesList.innerHTML = "";
+            postsList.innerHTML = "";
+
+            const model = document.getElementById("model").value;
+
+            const response = await fetch(`/reddit-assistant-stream/?query=${encodeURIComponent(query)}&model=${model}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                output.textContent += chunk;
+            }
+
+            output.textContent += "\n\nPlease wait, pulling up real-time Reddit recommendations...\n";
+
+            const extraResponse = await fetch(`/reddit-agentic-data/?query=${encodeURIComponent(query)}&model=${model}`);
+            const jsonData = await extraResponse.json();
+            console.log("📦 JSON from backend:", JSON.stringify(jsonData, null, 2));
+
+            // ✅ Step 1: Use fallback-safe variables
+            const entities = jsonData.entities || jsonData.recommended_entities || [];
+            const posts = jsonData.top_posts || jsonData.reddit_posts || [];
+
+            // ✅ Step 2: Use those variables in all logic
+            if (entities.length === 0) {
+                output.textContent += "\n⚠️ No entities extracted by model.\n";
+            }
+
+            if (posts.length === 0) {
+                output.textContent += "\n⚠️ No Reddit posts found after reranking.\n";
+            }
+
+            if (entities.length > 0) {
+                entitiesSection.style.display = "block";
+
+                entities.forEach(entity => {
+                    const li = document.createElement("li");
+
+                    const entityTitle = document.createElement("strong");
+                    entityTitle.textContent = `${entity.name} - ${entity.mentions} mentions`;
+                    li.appendChild(entityTitle);
+
+                    if (entity.comments && entity.comments.length > 0) {
+                        const commentBox = document.createElement("div");
+                        commentBox.style.border = "1px solid #ccc";
+                        commentBox.style.padding = "10px";
+                        commentBox.style.marginTop = "10px";
+                        commentBox.style.borderRadius = "8px";
+                        commentBox.style.background = "#f9f9f9";
+
+                        entity.comments.forEach(comment => {
+                            const commentText = document.createElement("p");
+                            commentText.textContent = comment.text;
+
+                            const commentLink = document.createElement("a");
+                            commentLink.href = comment.url;
+                            commentLink.target = "_blank";
+                            commentLink.textContent = "🔗 View on Reddit";
+
+                            commentBox.appendChild(commentText);
+                            commentBox.appendChild(commentLink);
+                            commentBox.appendChild(document.createElement("hr"));
+                        });
+
+                        li.appendChild(commentBox);
+                    }
+
+                    entitiesList.appendChild(li);
+                });
+            }
+
+            if (posts.length > 0) {
+                postsSection.style.display = "block";
+
+                posts.forEach(post => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `<a href="${post.url}" target="_blank">${post.title}</a><br>Score: ${post.score} | Comments: ${post.comments_count}`;
+                    postsList.appendChild(li);
+                });
+            }
+        });
+    </script> -->
+
+
+
+
+    <!-- <script>
+        const form = document.getElementById("chat-form");
+        const output = document.getElementById("output");
+        const entitiesList = document.getElementById("entities-list");
+        const postsList = document.getElementById("posts-list");
+        const entitiesSection = document.getElementById("entities-section");
+        const postsSection = document.getElementById("posts-section");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const query = document.getElementById("query").value;
+            output.textContent = "Loading...\n";
+            entitiesSection.style.display = "none";
+            postsSection.style.display = "none";
+            entitiesList.innerHTML = "";
+            postsList.innerHTML = "";
+
+            const model = document.getElementById("model").value;
+
+            const response = await fetch(`/reddit-assistant-stream/?query=${encodeURIComponent(query)}&model=${model}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                output.textContent += chunk;
+            }
+
+            output.textContent += "\n\nPlease wait, pulling up real-time Reddit recommendations...\n";
+
+            // const extraResponse = await fetch(`/reddit-assistant-data/?query=${encodeURIComponent(query)}&model=${model}`);
+            const extraResponse = await fetch(`/reddit-agentic-data/?query=${encodeURIComponent(query)}&model=${model}`);
+            const jsonData = await extraResponse.json();
+            console.log("📦 JSON from backend:", JSON.stringify(jsonData, null, 2));
+
+
+
+            // if (jsonData.recommended_entities.length === 0) {
+            if (!jsonData.entities || !Array.isArray(jsonData.entities) || jsonData.entities.length === 0) {
+
+                output.textContent += "\n⚠️ No entities extracted by model.\n";
+            }
+            // if (jsonData.reddit_posts.length === 0) {
+            if (!jsonData.top_posts || !Array.isArray(jsonData.top_posts) || jsonData.top_posts.length === 0) {
+
+                output.textContent += "\n⚠️ No Reddit posts found after reranking.\n";
+            }
+
+            // if (jsonData.recommended_entities.length > 0) {
+            if (Array.isArray(jsonData.entities) && jsonData.entities.length > 0) {
+
+                entitiesSection.style.display = "block";
+
+                jsonData.entities.forEach(entity => {
+                    const li = document.createElement("li");
+
+                    // Header: Entity name + mentions
+                    const entityTitle = document.createElement("strong");
+                    entityTitle.textContent = `${entity.name} - ${entity.mentions} mentions`;
+                    li.appendChild(entityTitle);
+
+                    // Comment Box (if comments exist)
+                    if (entity.comments && entity.comments.length > 0) {
+                        const commentBox = document.createElement("div");
+                        commentBox.style.border = "1px solid #ccc";
+                        commentBox.style.padding = "10px";
+                        commentBox.style.marginTop = "10px";
+                        commentBox.style.borderRadius = "8px";
+                        commentBox.style.background = "#f9f9f9";
+
+                        entity.comments.forEach(comment => {
+                            const commentText = document.createElement("p");
+                            commentText.textContent = comment.text;
+
+                            const commentLink = document.createElement("a");
+                            commentLink.href = comment.url;
+                            commentLink.target = "_blank";
+                            commentLink.textContent = "🔗 View on Reddit";
+
+                            commentBox.appendChild(commentText);
+                            commentBox.appendChild(commentLink);
+                            commentBox.appendChild(document.createElement("hr"));
+                        });
+
+                        li.appendChild(commentBox);
+                    }
+
+                    entitiesList.appendChild(li);
+                });
+            }
+
+            // if (jsonData.reddit_posts.length > 0) {
+            if (Array.isArray(jsonData.top_posts) && jsonData.top_posts.length > 0) {
+
+                postsSection.style.display = "block";
+                jsonData.top_posts.forEach(post => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `<a href="${post.url}" target="_blank">${post.title}</a><br>Score: ${post.score} | Comments: ${post.comments_count}`;
+                    postsList.appendChild(li);
+                });
+            }
+        });
+    </script> -->
+
+</body>
+</html>
+
+
+
+
+<!-- 
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reddit GPT Assistant</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input[type="text"], button { padding: 10px; font-size: 16px; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 6px; white-space: pre-wrap; }
+        .section { margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <h1>Reddit GPT Assistant</h1> -->
+
+    <!-- <form id="chat-form">
+        <input type="text" id="query" placeholder="Ask me anything..." required>
+        <button type="submit">Submit</button>
+    </form> -->
+
+    <!-- <form id="chat-form">
+        <input type="text" id="query" placeholder="Ask me anything..." required>
+        <select id="model">
+            <option value="hermes">Hermes</option>
+            <option value="gpt">GPT-4</option>
+            <option value="deepseek-r1">Deepseek-R1</option>
+            <option value="kimi-k2">Kimi K2</option>
+        </select>
+        <button type="submit">Submit</button>
+    </form>
+
+
+    <pre id="output">Waiting for your query...</pre>
+
+    <div id="entities-section" class="section" style="display: none;">
+        <h3>Most Recommended Entities from Reddit Comments:</h3>
+        <ul id="entities-list"></ul>
+    </div>
+
+    <div id="posts-section" class="section" style="display: none;">
+        <h3>Relevant Reddit Posts:</h3>
+        <ul id="posts-list"></ul>
+    </div>
+
+    <script>
+        const form = document.getElementById("chat-form");
+        const output = document.getElementById("output");
+        const entitiesList = document.getElementById("entities-list");
+        const postsList = document.getElementById("posts-list");
+        const entitiesSection = document.getElementById("entities-section");
+        const postsSection = document.getElementById("posts-section");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const query = document.getElementById("query").value;
+            output.textContent = "Loading...\n";
+            entitiesSection.style.display = "none";
+            postsSection.style.display = "none";
+            entitiesList.innerHTML = "";
+            postsList.innerHTML = "";
+
+            const model = document.getElementById("model").value;
+
+            const response = await fetch(`/reddit-assistant-stream/?query=${encodeURIComponent(query)}&model=${model}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                output.textContent += chunk;
+            }
+
+            output.textContent += "\n\nPlease wait, pulling up real-time Reddit recommendations...\n";
+           
+
+
+            const extraResponse = await fetch(`/reddit-assistant-data/?query=${encodeURIComponent(query)}&model=${model}`);
+            const jsonData = await extraResponse.json();
+
+             if (jsonData.recommended_entities.length === 0) {
+            output.textContent += "\n⚠️ No entities extracted by model.\n";
+            }
+            if (jsonData.reddit_posts.length === 0) {
+                output.textContent += "\n⚠️ No Reddit posts found after reranking.\n";
+            }
+
+            // if (jsonData.recommended_entities.length > 0) {
+            //     entitiesSection.style.display = "block";
+            //     jsonData.recommended_entities.forEach(([name, count]) => {
+            //         const li = document.createElement("li");
+            //         li.textContent = `${name} - ${count} mentions`;
+            //         entitiesList.appendChild(li);
+            //     });
+            // }
+
+           if (jsonData.recommended_entities.length > 0) {
+                entitiesSection.style.display = "block";
+                jsonData.recommended_entities.forEach(entity => {
+                    const li = document.createElement("li");
+
+                    if (Array.isArray(entity)) {
+                        // Hermes format: [name, count]
+                        li.textContent = `${entity[0]} - ${entity[1]} mentions`;
+                    } else if (typeof entity === 'object' && entity.name && entity.mentions) {
+                        // GPT format: { name: 'Entity', mentions: count }
+                        li.textContent = `${entity.name} - ${entity.mentions} mentions`;
+                    }
+
+                    entitiesList.appendChild(li);
+                });
+            }
+
+
+
+            if (jsonData.reddit_posts.length > 0) {
+                postsSection.style.display = "block";
+                jsonData.reddit_posts.forEach(post => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `<a href="${post.url}" target="_blank">${post.title}</a><br>Score: ${post.score} | Comments: ${post.comments_count}`;
+                    postsList.appendChild(li);
+                });
+            }
+        });
+    </script>
+
+</body>
+</html> -->
+
+
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html>
+    <head>
+        <title>Reddit Assistant</title>
+    </head>
+
+    <body>
+        <h1>Welcome to Reddit Assistant</h1>
+        <form method = "GET" action="/reddit-assistant/">
+            <input type = "text" name= "query" placeholder="Enter your search query" required>
+            <button type = "submit">Search</button>
+        </form>
+    </body>
+</html> -->

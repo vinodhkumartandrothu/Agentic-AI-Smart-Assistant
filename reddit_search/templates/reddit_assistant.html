@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Reddit GPT Assistant</title>
+        
+    </head>
+    <body>
+        <h1>Reddit GPT Assistant</h1>
+        <form method="get" action="{% url 'reddit_gpt_stream' %}">
+            <input type="text" name="query" placeholder="Ask me anything..." required>
+            <button type="submit">Search</button>
+        </form>
+
+        {% if response_data.gpt_answer %}
+            <p>{{ response_data.gpt_answer }}</p>
+        {% endif %}
+
+        {% if response_data.recommended_entities %}
+            <h2>Most Recommended Entities from Reddit Comments</h2>
+            <ul>
+                {% for name, count in response_data.recommended_entities %}
+                    <li>{{ name }} - {{ count }} mentions</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+
+        {% if response_data.reddit_posts %}
+            <h2>Relevant Reddit Posts</h2>
+            <ul>
+                {% for post in response_data.reddit_posts %}
+                    <li>
+                        <a href="{{ post.url }}" target="_blank">{{ post.title }}</a><br>
+                        Score: {{ post.score }} | Comments: {{ post.comments_count }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+    </body>
+</html>

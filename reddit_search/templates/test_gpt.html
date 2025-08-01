@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><title>GPT Test</title></head>
+<body>
+    <input type="text" id="queryInput" placeholder="Ask something..." />
+    <button onclick="askGPT()">Send</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function askGPT() {
+            const query = document.getElementById("queryInput").value;
+            const response = await fetch(`/gpt-answer/?query=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            document.getElementById("result").textContent = data.answer || data.error;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+.env
+reddit_config.py
+
+
+
+# SQLite database (don't push local DB)
+db.sqlite3
+
+# Bytecode and cache
+__pycache__/
+*.py[cod]
+*.sqlite3
+
+# Virtual environments
+venv/
+.env/

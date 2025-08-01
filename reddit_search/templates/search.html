@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reddit GPT Assistant</title>
+</head>
+<body>
+    <h1>Reddit GPT Assistant</h1>
+
+    <form method="get" action="{% url 'search' %}">
+        <input type="text" name="query" placeholder="Search Reddit..." value="{{ query }}">
+        <button type="submit">Search</button>
+    </form>
+
+    {% if query %}
+        <h2>You searched for: <em>{{ query }}</em></h2>
+
+        <h2>Most Recommended Entities from Reddit Comments</h2>
+        {% if recommendations %}
+            <!-- <ul>
+                {% for name, count in recommendations %}
+                    <li><strong>{{ name }}</strong> – {{ count }} mentions</li>
+                {% endfor %}
+            </ul> -->
+            {% for rec in recommendations %}
+            {% if rec.name %}
+            <div style="border:1px solid #ccc; margin-bottom:20px; padding:10px; border-radius:5px;">
+                <h3>{{ rec.name }} – {{ rec.mentions }} mentions</h3>
+
+                {% with rec.name|lower as key %}
+                    <!-- {% if entity_comments.key %} -->
+                        {% if entity_comments[key] %}
+                        <div style="margin-left:15px;">
+                            <!-- {% for comment in entity_comments.key %} -->
+                                {% for comment in entity_comments[key] %}
+                                <div style="background:#f5f5f5; margin-bottom:10px; padding:10px; border-left:3px solid #0079d3;">
+                                    <p>{{ comment.text }}</p>
+                                    <a href="{{ comment.url }}" target="_blank">View on Reddit</a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p>No matching comments found.</p>
+                    {% endif %}
+                {% endwith %}
+            </div>
+            {% endif %}
+        {% endfor %}
+
+        {% else %}
+            <p>No relevant recommendations found in Reddit comments.</p>
+        {% endif %}
+
+        <h3>Relevant Reddit Posts</h3>
+        {% if results %}
+            <ul>
+                {% for post in results %}
+                    <li>
+                        <a href="{{ post.url }}" target="_blank">{{ post.title }}</a><br>
+                        Score: {{ post.score }} | Comments: {{ post.comments_count }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No Reddit posts found for this query.</p>
+        {% endif %}
+    {% endif %}
+</body>
+</html>
