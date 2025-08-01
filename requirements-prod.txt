@@ -1,0 +1,10 @@
+# requirements-prod.txt
+Django==5.2.4
+gunicorn==23.0.0
+celery==5.5.3
+redis==6.2.0
+praw==7.8.1
+spacy==3.8.7
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85
+requests==2.32.4
+python-dotenv==1.1.1

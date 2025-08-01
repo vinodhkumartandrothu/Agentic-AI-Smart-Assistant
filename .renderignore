@@ -1,0 +1,11 @@
+__pycache__/
+*.pt
+*.ckpt
+*.tar.gz
+*.safetensors
+*.bin
+*.whl
+models/
+tmp/
+.env
+.idea/
