@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-bqjc+csa70x#(et31m#0ja=kd$6k@pnhv9^_pk6o-^lydg4y2b
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '474388682546.ngrok-free.app']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '474388682546.ngrok-free.app', 'agentic-ai-smart-assistant.onrender.com']
 
 
 
