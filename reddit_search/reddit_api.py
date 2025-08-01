@@ -3,8 +3,7 @@ import requests
 import json
 import re
 import os
-import spacy
-from sentence_transformers import SentenceTransformer
+
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict
 from openai import OpenAI
@@ -41,8 +40,7 @@ def generate_entity_variants(entity_name: str):
 # Prevent tokenizer parallelism warning
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# Load spaCy once for NER filtering
-nlp = spacy.load("en_core_web_sm")
+
 
 # PRAW Reddit client
 reddit = praw.Reddit(
@@ -93,6 +91,8 @@ def extract_phrases(query: str):
 
 def filter_relevant_posts(posts: list, query: str):
     """Filter posts based on noun overlap and meaningful phrase matches."""
+    import spacy
+    nlp = spacy.load("en_core_web_sm") 
     doc = nlp(query)
     query_nouns = {tok.lemma_.lower() for tok in doc if tok.pos_ in ("NOUN", "PROPN")}
     query_phrases = extract_phrases(query)  # ['plant shops', 'in dfw', ...]
@@ -115,6 +115,9 @@ def filter_relevant_posts(posts: list, query: str):
 
 
 def rerank_posts(posts: list, query: str, top_k: int = 10):
+    from sentence_transformers import SentenceTransformer  # ✅ load only when needed
+    
+
     model = SentenceTransformer("all-MiniLM-L6-v2", device='cpu')
 
     print(f"\n🔍 Query: {query}")
@@ -285,6 +288,7 @@ def match_comments_to_entities(entities, comment_origin_map, post_url_map, max_c
 
 
 def extract_recommendations(comments: list, model="hermes"):
+    
     combined = "\n\n".join(comments)
 
     if model.lower().startswith("gpt"):
