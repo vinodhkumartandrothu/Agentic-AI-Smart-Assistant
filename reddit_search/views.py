@@ -7,6 +7,9 @@ from django.http import HttpResponse
 from . generate_response import generate_reddit_gpt_response
 from .reddit_sdk import RedditAssistantSDK  # ✅ Use the actual app/module name
 from .reddit_agent import run_agentic_query
+from .tasks import run_agentic_query_task
+from celery.result import AsyncResult
+
 
 # from .reddit_assistant import get_gpt_answer
 
@@ -31,49 +34,7 @@ def search(request):
     return render(request, 'search.html', context)
 
 
-# def reddit_gpt_view(request):
-#     response_data = {}
 
-#     if request.method == "GET" and "query" in request.GET:
-#         query = request.GET.get("query")
-#         response_data = generate_reddit_gpt_response(query)
-
-#     return render(request, "reddit_assistant.html", {
-#         "response_data": response_data
-#     })
-
-
-# from django.http import StreamingHttpResponse
-
-# def reddit_gpt_stream_view(request):
-#     LLM_STUDIO_URL = "http://10.125.141.244:1234/v1/chat/completions"
-#     LLM_MODEL = "hermes-3-llama-3.1-8b"
-#     query = request.GET.get("query")
-
-#     def stream_response():
-#         response = requests.post(
-#             LLM_STUDIO_URL,
-#             headers={"Content-Type": "application/json"},
-#             data=json.dumps({
-#                 "model": LLM_MODEL,
-#                 "messages": [
-#                     {"role": "system", "content": "You are a helpful assistant."},
-#                     {"role": "user", "content": query},
-#                 ],
-#                 "stream": True
-#             }),
-#             stream=True
-#         )
-#         for line in response.iter_lines():
-#             if line:
-#                 try:
-#                     data = json.loads(line.decode("utf-8").lstrip("data: "))
-#                     text = data['choices'][0]['delta'].get('content', '')
-#                     yield text
-#                 except Exception:
-#                     continue
-
-#     return StreamingHttpResponse(stream_response(), content_type='text/plain')
 
 from django.http import StreamingHttpResponse
 
@@ -153,19 +114,115 @@ def gpt_answer_view(request):
 
 def reddit_agentic_view(request):
     query = request.GET.get("query")
-    model = request.GET.get("model", "kimi-k2")
+    model = request.GET.get("model", "gpt-4.1")
 
     if not query:
         return JsonResponse({"error": "No query provided"}, status=400)
     
-    result = run_agentic_query(query, model=model)
-    # return JsonResponse(result)
+    task = run_agentic_query_task.delay(query, model)
     return JsonResponse({
-        "entities": result.get("recommended_entities", []),
-        "top_posts": result.get("results", []),
-        "debug": {
-            "raw_result_keys": list(result.keys()),
-            "first_entity": result.get("recommended_entities", [])[0] if result.get("recommended_entities") else {},
-            "first_post": result.get("results", [])[0] if result.get("results") else {}
-        }
+        "task_id": task.id,
+        "status": "processing"
     })
+
+    
+    # result = run_agentic_query(query, model=model)
+    # # return JsonResponse(result)
+    # return JsonResponse({
+    #     "entities": result.get("recommended_entities", []),
+    #     "top_posts": result.get("results", []),
+    #     "debug": {
+    #         "raw_result_keys": list(result.keys()),
+    #         "first_entity": result.get("recommended_entities", [])[0] if result.get("recommended_entities") else {},
+    #         "first_post": result.get("results", [])[0] if result.get("results") else {}
+    #     }
+    # })
+
+
+
+from django.http import JsonResponse
+from celery.result import AsyncResult
+
+def get_task_result(request):
+    task_id = request.GET.get("task_id")
+    if not task_id:
+        return JsonResponse({"error": "Task ID is required"}, status=400)
+
+    result = AsyncResult(task_id)
+    if result.ready():
+        if result.successful():
+            result_data = result.result
+            return JsonResponse({
+                "status": "success",
+                "answer": result_data.get("answer", ""),
+                "entities": result_data.get("recommended_entities", []),
+                "top_posts": result_data.get("results", result_data.get("top_posts", []))
+            })
+        else:
+            return JsonResponse({"status": "failed", "error": "Task failed"}, status=500)
+    else:
+        return JsonResponse({"status": "pending"})
+
+
+# def get_task_result(request):
+#     task_id = request.GET.get("task_id")
+#     if not task_id:
+#         return JsonResponse({"error": "Task ID is required"}, status=400)
+
+#     result = AsyncResult(task_id)
+#     if result.ready():
+#         if result.successful():
+#             return JsonResponse(result.result)
+#         else:
+#             return JsonResponse({"error": "Task failed"}, status=500)
+#     else:
+#         return JsonResponse({"status": "pending"})
+
+
+
+
+
+
+# def reddit_gpt_view(request):
+#     response_data = {}
+
+#     if request.method == "GET" and "query" in request.GET:
+#         query = request.GET.get("query")
+#         response_data = generate_reddit_gpt_response(query)
+
+#     return render(request, "reddit_assistant.html", {
+#         "response_data": response_data
+#     })
+
+
+# from django.http import StreamingHttpResponse
+
+# def reddit_gpt_stream_view(request):
+#     LLM_STUDIO_URL = "http://10.125.141.244:1234/v1/chat/completions"
+#     LLM_MODEL = "hermes-3-llama-3.1-8b"
+#     query = request.GET.get("query")
+
+#     def stream_response():
+#         response = requests.post(
+#             LLM_STUDIO_URL,
+#             headers={"Content-Type": "application/json"},
+#             data=json.dumps({
+#                 "model": LLM_MODEL,
+#                 "messages": [
+#                     {"role": "system", "content": "You are a helpful assistant."},
+#                     {"role": "user", "content": query},
+#                 ],
+#                 "stream": True
+#             }),
+#             stream=True
+#         )
+#         for line in response.iter_lines():
+#             if line:
+#                 try:
+#                     data = json.loads(line.decode("utf-8").lstrip("data: "))
+#                     text = data['choices'][0]['delta'].get('content', '')
+#                     yield text
+#                 except Exception:
+#                     continue
+
+#     return StreamingHttpResponse(stream_response(), content_type='text/plain')

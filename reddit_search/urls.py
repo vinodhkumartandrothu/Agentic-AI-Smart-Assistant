@@ -12,6 +12,7 @@ urlpatterns = [
     path("reddit-assistant-data/", views.reddit_data_view, name="reddit_data"),
     path("gpt-answer/", views.gpt_answer_view, name="gpt-answer"),
     path("reddit-agentic-data/", views.reddit_agentic_view, name="reddit_agentic_data"),
+    path("get-task-result/", views.get_task_result, name="get_task_result"),
 
     
 

@@ -71,12 +71,38 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 
-# PRAW Reddit client
+
+# Try to load from environment
+client_id = os.getenv("REDDIT_CLIENT_ID")
+client_secret = os.getenv("REDDIT_CLIENT_SECRET")
+user_agent = os.getenv("REDDIT_USER_AGENT")
+
+# If not found, fallback to reddit_config.py (local only)
+if not client_id or not client_secret or not user_agent:
+    try:
+        from . import reddit_config
+        client_id = reddit_config.REDDIT_CLIENT_ID
+        client_secret = reddit_config.REDDIT_CLIENT_SECRET
+        user_agent = reddit_config.REDDIT_USER_AGENT
+    except ImportError:
+        raise EnvironmentError("Missing Reddit credentials in both env and reddit_config.py")
+
+# Finally, initialize
 reddit = praw.Reddit(
-    client_id=os.environ["REDDIT_CLIENT_ID"],
-    client_secret=os.environ["REDDIT_CLIENT_SECRET"],
-    user_agent=os.environ["REDDIT_USER_AGENT"]
+    client_id=client_id,
+    client_secret=client_secret,
+    user_agent=user_agent
 )
+
+
+
+
+# PRAW Reddit client
+# reddit = praw.Reddit(
+#     client_id=os.environ["REDDIT_CLIENT_ID"],
+#     client_secret=os.environ["REDDIT_CLIENT_SECRET"],
+#     user_agent=os.environ["REDDIT_USER_AGENT"]
+# )
 
 
 # Embedding model for reranking

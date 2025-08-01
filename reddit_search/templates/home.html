@@ -46,7 +46,178 @@
             <ul id="posts-list" class="list-group"></ul>
         </div>
 
-       <script>
+        <script>
+            const form = document.getElementById("chat-form");
+            const queryInput = document.getElementById("query");
+            const outputBox = document.getElementById("output");
+            const spinner = document.getElementById("loading-spinner");
+
+            const entitiesList = document.getElementById("entities-list");
+            const entitiesSection = document.getElementById("entities-section");
+
+            const postsList = document.getElementById("posts-list");
+            const postsSection = document.getElementById("posts-section");
+
+            form.addEventListener("submit", async function (e) {
+                e.preventDefault();
+
+                const query = queryInput.value;
+                const model = "gpt";
+
+                spinner.style.display = "block";
+                entitiesList.innerHTML = "";
+                postsList.innerHTML = "";
+                entitiesSection.style.display = "none";
+                postsSection.style.display = "none";
+                outputBox.textContent = "";
+
+                try {
+                    // Step 1: Start task
+                    const taskStart = await fetch(`/reddit-agentic-data/?query=${encodeURIComponent(query)}&model=${model}`);
+                    const taskData = await taskStart.json();
+                    const taskId = taskData.task_id;
+
+                    // Step 2: Poll until complete
+                    let data = null;
+                    for (let i = 0; i < 15; i++) {
+                        const res = await fetch(`/get-task-result/?task_id=${taskId}`);
+                        const json = await res.json();
+
+                        console.log("🎯 GET Task Result:", json);
+
+
+                        if (json.status === "pending") {
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        } else {
+                            data = json;
+                            console.log("✅ Final data used:", data);
+
+                            break;
+                        }
+                    }
+
+                    if (!data) {
+                        outputBox.textContent = "❌ Task timed out.";
+                        return;
+                    }
+
+                    // Step 3: Display results
+                    if (data.answer) {
+                        outputBox.textContent = data.answer;
+                    } else if (
+                        (data.entities && data.entities.length > 0) ||
+                        (data.top_posts && data.top_posts.length > 0) ||
+                        (data.reddit_posts && data.reddit_posts.length > 0)
+                    ) {
+                        outputBox.textContent = "Here's what I found:";
+                    } else {
+                        outputBox.textContent = "";
+                    }
+
+                    if (data.entities && data.entities.length > 0) {
+                        entitiesSection.style.display = "block";
+
+                        data.entities.forEach(entity => {
+                            const li = document.createElement("li");
+                            const card = document.createElement("div");
+                            card.className = "card mb-3";
+
+                            const cardBody = document.createElement("div");
+                            cardBody.className = "card-body";
+
+                            const title = document.createElement("h5");
+                            title.className = "card-title";
+                            title.textContent = `${entity.name} – ${entity.mentions} mentions`;
+
+                            cardBody.appendChild(title);
+
+                            if (entity.comments && entity.comments.length > 0) {
+                                const commentWrapper = document.createElement("div");
+                                commentWrapper.className = "mt-3";
+
+                                const collapseDiv = document.createElement("div");
+                                collapseDiv.className = "mt-2";
+
+                                entity.comments.slice(0, 3).forEach((comment, index) => {
+                                    const commentDiv = document.createElement("div");
+                                    commentDiv.className = "p-3 bg-light border rounded mb-2";
+
+                                    if (index === 0) {
+                                        commentDiv.classList.add("text-muted");
+                                    } else {
+                                        commentDiv.style.display = "none";
+                                    }
+
+                                    const commentText = document.createElement("p");
+                                    commentText.textContent = comment.text;
+
+                                    const commentLink = document.createElement("a");
+                                    commentLink.href = comment.url;
+                                    commentLink.target = "_blank";
+                                    commentLink.textContent = "🔗 View on Reddit";
+
+                                    commentDiv.appendChild(commentText);
+                                    commentDiv.appendChild(commentLink);
+                                    commentDiv.dataset.index = index;
+                                    collapseDiv.appendChild(commentDiv);
+                                });
+
+                                const toggleBtn = document.createElement("button");
+                                toggleBtn.className = "btn btn-sm btn-outline-secondary mt-2";
+                                toggleBtn.textContent = "See more comments";
+
+                                toggleBtn.onclick = function () {
+                                    const hiddenComments = collapseDiv.querySelectorAll('div[data-index]');
+                                    hiddenComments.forEach(div => {
+                                        if (div.dataset.index === "0") return;
+                                        div.style.display = div.style.display === "none" ? "block" : "none";
+                                    });
+
+                                    toggleBtn.textContent =
+                                        toggleBtn.textContent === "See more comments"
+                                            ? "Hide comments"
+                                            : "See more comments";
+                                };
+
+                                commentWrapper.appendChild(collapseDiv);
+                                commentWrapper.appendChild(toggleBtn);
+                                cardBody.appendChild(commentWrapper);
+                            }
+
+                            card.appendChild(cardBody);
+                            li.appendChild(card);
+                            entitiesList.appendChild(li);
+                        });
+                    } else {
+                        outputBox.textContent += "\n⚠️ No entities extracted by model.";
+                    }
+
+                    const posts = data.top_posts || data.reddit_posts || [];
+                    if (posts.length > 0) {
+                        postsSection.style.display = "block";
+
+                        posts.forEach(post => {
+                            const li = document.createElement("li");
+                            li.className = "list-group-item";
+                            li.innerHTML = `<a href="${post.url}" target="_blank">${post.title}</a><br>Score: ${post.score} | Comments: ${post.comments_count}`;
+                            postsList.appendChild(li);
+                        });
+                    } else {
+                        outputBox.textContent += "\n⚠️ No Reddit posts found after reranking.";
+                    }
+
+                } catch (error) {
+                    outputBox.textContent += "\n❌ Something went wrong while fetching data.";
+                    console.error("JS Error:", error);
+                } finally {
+                    spinner.style.display = "none";
+                }
+            });
+        </script>
+
+
+
+       <!-- <script>
             const form = document.getElementById("chat-form");
             const queryInput = document.getElementById("query");
             const outputBox = document.getElementById("output");
@@ -190,7 +361,7 @@
                     spinner.style.display = "none";
                 }
             });
-        </script>
+        </script> -->
 
     </div>
 </body>
