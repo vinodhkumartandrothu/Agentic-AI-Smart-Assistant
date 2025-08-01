@@ -7,7 +7,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict
 from openai import OpenAI
 from .openai_utils import client
-from . import reddit_config
+# from . import reddit_config
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import fuzz
