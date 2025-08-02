@@ -172,6 +172,7 @@ def filter_relevant_posts(posts: list, query: str):
 def rerank_posts(posts: list, query: str, top_k: int = 10):
     model = get_embedding_model()
     print(f"\n🔍 Query: {query}")
+    print("🧠 [Rerank] Encoding query with sentence-transformer")
     query_emb = model.encode([query])[0]
 
     phrases = list(extract_phrases(query))
@@ -181,11 +182,15 @@ def rerank_posts(posts: list, query: str, top_k: int = 10):
     scored = []
 
     for idx, post in enumerate(posts):
+        print("🧠 [Rerank] Encoding post titles")
         title = post['title']
         content = f"{title} {title} ||| {post['selftext'][:300]}"
         post_emb = model.encode([content])[0]
+        print(f"✅ [Rerank] Encoded {len(post_emb)} titles")
+
 
         # Similarity to full query
+        print("🔁 [Rerank] Calculating cosine similarity")
         sim_query = cosine_similarity([query_emb], [post_emb])[0][0]
 
         # Phrase-level similarities
@@ -222,6 +227,7 @@ def rerank_posts(posts: list, query: str, top_k: int = 10):
     scored = [(score, post) for score, post in scored if score >= MIN_SCORE_THRESHOLD]
 
     # Sort by score and return top_k
+    print("📊 [Rerank] Sorting top posts")
     scored.sort(key=lambda x: (x[0], x[1]['score']), reverse=True)
     top_posts = [p for _, p in scored[:top_k]]
 
