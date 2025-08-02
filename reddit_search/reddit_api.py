@@ -591,10 +591,15 @@ def map_entities_to_comments(entities, comments):
 
 
 
-def search_reddit_posts(query: str, model: str = "hermes"):
+def search_reddit_posts(query: str, model: str = "gpt"):
+    print("📌 [1] Inside search_reddit_posts")
+
+    print("📌 [2] Fetching posts...")
     posts = fetch_reddit_posts(query)
+    print(f"✅ [2] Fetched {len(posts)} posts")
     filtered_posts = filter_relevant_posts(posts, query)
     top_posts = rerank_posts(posts, query, top_k=10)
+    print(f"✅ [3] Reranked to {len(top_posts)} posts")
 
     
 
@@ -608,7 +613,9 @@ def search_reddit_posts(query: str, model: str = "hermes"):
         title = post["title"].lower()
         if any(word in title for word in query_keywords):
             comments = fetch_top_comments(post["id"], limit=15)
+            print(f"✅ [4] Got top comments")
             entity_comment_sources.extend(comments)
+
             comment_origin_map.extend([(c, post["id"]) for c in comments])
         else:
             # Still collect comments for mapping later — but don't send them to GPT
@@ -622,6 +629,7 @@ def search_reddit_posts(query: str, model: str = "hermes"):
 
     # recommendations = extract_recommendations([c["text"] for c in all_comments], model=model)
     recommendations = extract_recommendations([c["text"] for c in entity_comment_sources], model=model)
+    print(f"✅ [5] Extracted entities: {recommendations}")
 
     print(f"Model: {model} | Top Posts Found: {len(top_posts)}")
     print(f"Model: {model} | Entities extracted: {recommendations}")
