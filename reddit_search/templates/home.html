@@ -79,7 +79,7 @@
 
                     // Step 2: Poll until complete
                     let data = null;
-                    for (let i = 0; i < 15; i++) {
+                    for (let i = 0; i < 90; i++) {
                         const res = await fetch(`/get-task-result/?task_id=${taskId}`);
                         const json = await res.json();
 
