@@ -34,7 +34,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-insecure-key")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1','smartpickr.app', '52.14.209.100', '18.222.104.4']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1','smartpickr.app', 'www.smartpickr.app','52.14.209.100', '18.222.104.4']
 
 
 
